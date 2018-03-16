@@ -1,0 +1,19 @@
+Package: BICEP
+Type: Package
+Title: Bi-linear algorithm for composite empirical likelihood
+Version: 1.0
+Date: 2018-02-07
+Author: Who wrote it
+Maintainer: Who to complain to <yourfault@somewhere.net>
+Description: Scalable and robust computation for the composite empirical likelihood test.
+License: GPL-3
+Imports: 
+  Rcpp (>= 0.12.12), 
+  RcppEigen (>= 0.3.3.3.0),
+  lbfgs,
+  foreach,
+  doRNG,
+  pracma,
+  compiler
+LinkingTo: Rcpp, RcppEigen
+RoxygenNote: 6.0.1
