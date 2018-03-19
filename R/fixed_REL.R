@@ -271,7 +271,7 @@ REL_fixed <- function(Z_mat, q = NULL,
       dual_step <- RB_vary(dual_step, primal_resid, dual_resid, RB_mu, RB_tau)
     }
     if (vary_penalty == 'RB2') {
-      dual_step <- RB2_vary(dual_step, primal_resid, primal_resid_scale, dual_resid, dual_resid_scale, RB2_ksi, RB_tau)
+      dual_step <- RB2_vary(dual_step, primal_resid, primal_resid_scale, dual_resid, dual_resid_scale, RB2_ksi, RB_tau, RB_mu)
     }
     fun_grad_arg$dual_step <- dual_step
     rho_vec[j] <- dual_step

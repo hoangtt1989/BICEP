@@ -1,5 +1,4 @@
 primal_resid_calc <- function(Z_mat_new, wts_new) {
-  # n <- length(wts_new)
   sqrt( sum( crossprod(Z_mat_new, wts_new)^2 ) )
 }
 
@@ -26,7 +25,6 @@ REL_delta_dual_resid <- function(Z_mat_new, Z_mat_curr, wts_new, delta_new, dual
 
 REL_dual_resid_sc <- function(Z_mat_curr, gamma_new, wts_new, delta_curr) {
   Z_gam <- Z_mat_curr %*% gamma_new
-  # n <- length(wts_new)
   max(sqrt( sum( ( Z_gam * wts_new )^2 ) ), sqrt( sum( ( Z_gam * (1 - delta_curr) )^2 ) ) )
 }
 

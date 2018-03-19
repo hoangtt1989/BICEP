@@ -311,7 +311,7 @@ TRICEP_glm <- function(beta_test, X, y, F_reparam = NULL, s_hat_reparam = NULL, 
     if (vary_penalty == 'RB') {
       dual_step <- RB_vary(dual_step, primal_resid, dual_resid, RB_mu, RB_tau)
     } else if (vary_penalty == 'RB2') {
-      dual_step <- RB2_vary(dual_step, primal_resid, primal_resid_scale, dual_resid, dual_resid_scale, RB2_ksi, RB_tau)
+      dual_step <- RB2_vary(dual_step, primal_resid, primal_resid_scale, dual_resid, dual_resid_scale, RB2_ksi, RB_tau, RB_mu)
     } else {
       dual_step <- dual_step
     }

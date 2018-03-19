@@ -8,7 +8,7 @@ RB_vary <- function(dual_step, primal_resid, dual_resid, RB_mu, RB_tau) {
   return(dual_step)
 }
 
-RB2_vary <- function(dual_step, primal_resid, primal_resid_scale, dual_resid, dual_resid_scale, RB2_ksi, RB_tau) {
+RB2_vary <- function(dual_step, primal_resid, primal_resid_scale, dual_resid, dual_resid_scale, RB2_ksi, RB_tau, RB_mu) {
   ###varying tau
   primal_dual_div <- primal_resid / dual_resid
   dual_primal_div <- 1 / primal_dual_div
