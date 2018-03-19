@@ -323,7 +323,7 @@ REL_fixed <- function(Z_mat, q = NULL,
               gamma = gamma_curr, delta_opt = delta_new, outlier_idx = which(delta_new != 0), 
               outer_converged = outer_converged, time = as.double(tot_time, 'secs'), 
               outer_fval = -outer_fval, primal_resid = primal_resid, dual_resid = dual_resid, rho = rho_vec,
-              outer_tol = outer_tol, beta_outlier_nits = beta_outlier_nits, beta_outlier_tol = beta_outlier_tol,
+              outer_tol = outer_tol, outlier_nits = beta_outlier_nits, outlier_tol = beta_outlier_tol,
               mirror_nits = mirror_nits, outer_nits = j))
 }
 ##################

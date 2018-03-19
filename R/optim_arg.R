@@ -29,6 +29,7 @@ optim_prox_control <- function(tol_type = c('par', 'fval'), step_size = 1, accel
 #' @export
 optim_mirror_control <- function(maxit = 1000, eps = 1e-8, tol_type = c('fval', 'wts', 'logelr'),
                                  vary_step = F, line_search = F, ls_beta = .75, ls_eps = 1e-10, ls_maxit = 100) {
+  tol_type <- tol_type[1]
   return(list(maxit = maxit, mirror_eps = eps, tol_type = tol_type, vary_step = vary_step, line_search = line_search,
               ls_eps = ls_eps, ls_maxit = ls_maxit, ls_beta = ls_beta))
 }

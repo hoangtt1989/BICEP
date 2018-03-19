@@ -363,6 +363,6 @@ TRICEP_glm <- function(beta_test, X, y, F_reparam = NULL, s_hat_reparam = NULL, 
   return(list(logelr = logelr, logelr_stat = -2 * logelr, wts = wts_curr / n, sum_wts = sum(wts_curr) / n,
               gamma = gamma_curr, delta_opt = delta_opt, outlier_idx = nz_patt, beta_opt = beta_curr, outer_converged = outer_converged, time = as.double(tot_time, 'secs'), 
               outer_fval = -outer_fval, primal_resid = primal_resid, dual_resid = dual_resid, rho = rho_vec,
-              outer_tol = outer_tol, mirror_converged = mirror_converged_vec, delta_converged = delta_converged_vec, beta_converged = beta_converged_vec, outer_nits = j))
+              outer_tol = outer_tol, mirror_nits = mirror_converged_vec, delta_nits = delta_converged_vec, beta_converged = beta_converged_vec, outer_nits = j))
 }
 ##################
