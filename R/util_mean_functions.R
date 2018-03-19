@@ -43,7 +43,7 @@ grad_mean <- function(beta, X, wts, gamma, dual_step) {
 mean_opt_wrapper <- function(beta_new, wts_new, gamma_curr, X, F_reparam, s_hat_reparam, dual_step, beta_opt_type, prox_fun, prox_fun_arg, prox_optim_arg) {
   if (beta_opt_type == 'LBFGS') {
     z_hat_new <- as.vector(crossprod(F_reparam, beta_new - s_hat_reparam))
-    beta_res <- optim(z_hat_new, fun_reparam_mean, grad_reparam_mean, F_reparam, s_hat_reparam, X, wts_new, gamma_curr, dual_step, method = 'BFGS')
+    beta_res <- stats::optim(z_hat_new, fun_reparam_mean, grad_reparam_mean, F_reparam, s_hat_reparam, X, wts_new, gamma_curr, dual_step, method = 'BFGS')
     z_hat_new <- beta_res$par
     beta_new <- as.vector(F_reparam %*% z_hat_new + s_hat_reparam)
     converged <- beta_res$convergence == 0
