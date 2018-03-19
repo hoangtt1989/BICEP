@@ -1,5 +1,11 @@
 
 ##################affine reparam helper
+#' Construct the variables for the affine reparameterization
+#' 
+#' @param mean_init a vector of the MLE.
+#' @param fix_index a vector containing the indices to be profiled.
+#' @param alpha_add a vector of the same length as \code{fix_index} containing the adjustments away from the MLE.
+#' @return A list with the new candidate value for \code{beta} and the matrices/vectors required for the reparameterization.
 #' @export
 reparam_helper <- function(mean_init, fix_index, alpha_add) {
   p <- length(mean_init)
@@ -11,7 +17,7 @@ reparam_helper <- function(mean_init, fix_index, alpha_add) {
   }
   alpha_test <- mean_init[fix_index] + alpha_add
   s_hat_reparam <- rep(0, p)
-  s_hat_reparam <- pinv(T_reparam) * alpha_test
+  s_hat_reparam <- pracma::pinv(T_reparam) * alpha_test
   F_reparam <- pracma::orth(pracma::nullspace(T_reparam))
   ##
   beta_test <- mean_init
@@ -21,6 +27,32 @@ reparam_helper <- function(mean_init, fix_index, alpha_add) {
 ##################
 
 ##################wrapper function for mean
+#' Run TRICEP/BICEP for a vector mean.
+#' 
+#' @param beta_test a vector of candidate test values.
+#' @param X a design matrix with observations in rows and variables in columns.
+#' @param F_reparam the \code{F} matrix for the affine reparameterization.
+#' @param s_hat_reparam the \code{s} vector for the affine reparameterization.
+#' @param prox_fun a proximal operator. This should be an \code{R} object.
+#' @param detect_outlier a boolean indicating whether an REL update should be run to detect outliers.
+#' @param q the number of detected outliers (only valid if \code{detect_outlier = T}). The default is \code{floor(.05 * n)}.
+#' @param reuse_delta use the last estimate of \code{delta} in the current outer loop iteration.
+#' @param prox_fun_arg a list of arguments passed to \code{prox_fun}.
+#' @param wts_init an initial guess for the weights vector. Default is \code{1/n}.
+#' @param vary_penalty a string specifying the type of penalty variation.
+#' @param RB_mu the \code{mu} parameter for the residual balancing scheme.
+#' @param RB_tau the \code{tau} parameter for the residual balancing scheme.
+#' @param RB2_ksi the \code{ksi} parameter for the \code{RB2} scheme.
+#' @param outer_eps absolute tolerance required for outer loop convergence.
+#' @param outer_rel_eps relative tolerance required for outer loop convergence.
+#' @param dual_step initial penalty parameter.
+#' @param outer_maxit maximum number of outer loop iterations.
+#' @param wts_beta_rep the number of repetitions of the block coordinate descent update within each outer loop iteration.
+#' @param outer_tol_type the type of tolerance check for the outer loop.
+#' @param outlier_loop_arg control arguments passed to the \code{delta} optimization; see \code{\link{optim_outlier_control}}.
+#' @param mirror_arg control arguments passed to the mirror descent optimization; see \code{\link{optim_mirror_control}}.
+#' @param prox_optim_arg a list of control arguments passed to the proximal gradient descent update for \code{prox_fun}; see \code{\link{optim_prox_control}}.
+#' @param verbose a boolean to allow console output.
 #' @export
 TRICEP_mean <- function(beta_test, X, F_reparam = NULL, s_hat_reparam = NULL, prox_fun = NULL, 
                           detect_outlier = F, q = NULL, reuse_delta = F,
@@ -28,15 +60,15 @@ TRICEP_mean <- function(beta_test, X, F_reparam = NULL, s_hat_reparam = NULL, pr
                           wts_init = NULL,
                           vary_penalty = c('RB', 'RB2', 'none'), 
                           RB_mu = 10, RB_tau = 2, RB2_ksi = 2, outer_eps = 1e-8, outer_rel_eps = 1e-4, dual_step = 2, 
-                          outer_maxit = 1000, dual_type = 1, wts_beta_rep = 1,
+                          outer_maxit = 1000, wts_beta_rep = 1,
                           outer_tol_type = c('primal_dual', 'fval', 'primal'), 
-                          outlier_loop_arg = list(),
-                          mirror_arg = list(line_search = T), 
-                          prox_optim_arg = list(), verbose = F) {
+                          outlier_loop_arg = optim_outlier_control(),
+                          mirror_arg = optim_mirror_control(line_search = T), 
+                          prox_optim_arg = optim_prox_control(), verbose = F) {
   TRICEP_glm(beta_test, X, y = NULL, F_reparam = F_reparam, s_hat_reparam = s_hat_reparam, prox_fun = prox_fun,
                detect_outlier = detect_outlier, q = q, reuse_delta = reuse_delta, prox_fun_arg = prox_fun_arg,
                family = 'mean', wts_init = wts_init, vary_penalty = vary_penalty, RB_mu = RB_mu, RB_tau = RB_tau, RB2_ksi = RB2_ksi,
-               outer_eps = outer_eps, outer_rel_eps = outer_rel_eps, dual_step = dual_step, outer_maxit = outer_maxit, dual_type = dual_type,
+               outer_eps = outer_eps, outer_rel_eps = outer_rel_eps, dual_step = dual_step, outer_maxit = outer_maxit,
                wts_beta_rep = wts_beta_rep, outer_tol_type = outer_tol_type, outlier_loop_arg = outlier_loop_arg, mirror_arg = mirror_arg,
                prox_optim_arg = prox_optim_arg, verbose = verbose)
 }
@@ -44,19 +76,49 @@ TRICEP_mean <- function(beta_test, X, F_reparam = NULL, s_hat_reparam = NULL, pr
 
 
 ##################function for CEL glm admm (Rcpp)
+#' Run TRICEP/BICEP for generalized linear models.
+#' 
+#' @param beta_test a vector of candidate test values.
+#' @param X a design matrix with observations in rows and variables in columns.
+#' @param y a vector of the responses.
+#' @param F_reparam the \code{F} matrix for the affine reparameterization.
+#' @param s_hat_reparam the \code{s} vector for the affine reparameterization.
+#' @param prox_fun a proximal operator. This should be an \code{R} object.
+#' @param detect_outlier a boolean indicating whether an REL update should be run to detect outliers.
+#' @param q the number of detected outliers (only valid if \code{detect_outlier = T}). The default is \code{floor(.05 * n)}.
+#' @param reuse_delta use the last estimate of \code{delta} in the current outer loop iteration.
+#' @param prox_fun_arg a list of arguments passed to \code{prox_fun}.
+#' @param family the family for the canonical link function.
+#' @param wts_init an initial guess for the weights vector. Default is \code{1/n}.
+#' @param beta_opt_type the optimization type for the \code{beta} optimization. This is only applicable when the affine reparameterization is used. \code{closed_form} is only applicable when \code{family = "gaussian"}. If the user inputs \code{closed_form} for other families, the system switches to \code{"LBFGS"}.
+#' @param vary_penalty a string specifying the type of penalty variation.
+#' @param RB_mu the \code{mu} parameter for the residual balancing scheme.
+#' @param RB_tau the \code{tau} parameter for the residual balancing scheme.
+#' @param RB2_ksi the \code{ksi} parameter for the \code{RB2} scheme.
+#' @param outer_eps absolute tolerance required for outer loop convergence.
+#' @param outer_rel_eps relative tolerance required for outer loop convergence.
+#' @param dual_step initial penalty parameter.
+#' @param outer_maxit maximum number of outer loop iterations.
+#' @param wts_beta_rep the number of repetitions of the block coordinate descent update within each outer loop iteration.
+#' @param outer_tol_type the type of tolerance check for the outer loop.
+#' @param outlier_loop_arg control arguments passed to the \code{delta} optimization; see \code{\link{optim_outlier_control}}.
+#' @param mirror_arg control arguments passed to the mirror descent optimization; see \code{\link{optim_mirror_control}}.
+#' @param lbfgs_arg a list of control arguments passed to \code{\link[lbfgs]{lbfgs}}.
+#' @param prox_optim_arg a list of control arguments passed to the proximal gradient descent update for \code{prox_fun}; see \code{\link{optim_prox_control}}.
+#' @param verbose a boolean to allow console output.
 #' @export
 TRICEP_glm <- function(beta_test, X, y, F_reparam = NULL, s_hat_reparam = NULL, prox_fun = NULL, 
                          detect_outlier = F, q = NULL, reuse_delta = F,
                          prox_fun_arg = list(), 
-                         family = c('gaussian', 'binomial', 'poisson', 'mean'),
+                         family = c('gaussian', 'binomial', 'poisson'),
                          wts_init = NULL, beta_opt_type = c('closed_form', 'LBFGS'), 
                          vary_penalty = c('RB', 'RB2', 'none'), 
                          RB_mu = 10, RB_tau = 2, RB2_ksi = 2, outer_eps = 1e-8, outer_rel_eps = 1e-4, dual_step = 2, 
-                         outer_maxit = 1000, dual_type = 1, wts_beta_rep = 1,
+                         outer_maxit = 1000, wts_beta_rep = 1,
                          outer_tol_type = c('primal_dual', 'fval', 'primal'), 
-                         outlier_loop_arg = list(),
-                         mirror_arg = list(line_search = T), lbfgs_arg = list(gtol = .1, invisible = 1), 
-                         prox_optim_arg = list(), verbose = F) {
+                         outlier_loop_arg = optim_outlier_control(),
+                         mirror_arg = optim_mirror_control(line_search = T), lbfgs_arg = list(gtol = .1, invisible = 1), 
+                         prox_optim_arg = optim_prox_control(), verbose = F) {
   ##checking inputs
   if (all(is.null(F_reparam), is.null(s_hat_reparam)) && is.null(prox_fun)) {
     stop('The proximal operator (prox_fun) or BOTH F_reparam and s_hat_reparam (for affine reparameterization) must be supplied')
@@ -249,7 +311,7 @@ TRICEP_glm <- function(beta_test, X, y, F_reparam = NULL, s_hat_reparam = NULL, 
     if (vary_penalty == 'RB') {
       dual_step <- RB_vary(dual_step, primal_resid, dual_resid, RB_mu, RB_tau)
     } else if (vary_penalty == 'RB2') {
-      dual_step <- RB2_vary(dual_step, primal_resid, primal_resid_scale, dual_resid, dual_resid_scale, RB2_ksi, RB_tau, RB2_tau)
+      dual_step <- RB2_vary(dual_step, primal_resid, primal_resid_scale, dual_resid, dual_resid_scale, RB2_ksi, RB_tau)
     } else {
       dual_step <- dual_step
     }

@@ -3,17 +3,18 @@ Type: Package
 Title: Bi-linear algorithm for composite empirical likelihood
 Version: 1.0
 Date: 2018-02-07
-Author: Who wrote it
-Maintainer: Who to complain to <yourfault@somewhere.net>
+Author: Hoang Tran
+Maintainer: <hoang.t.tran@icloud.com>
 Description: Scalable and robust computation for the composite empirical likelihood test.
 License: GPL-3
 Imports: 
   Rcpp (>= 0.12.12), 
   RcppEigen (>= 0.3.3.3.0),
-  lbfgs,
-  foreach,
-  doRNG,
-  pracma,
-  compiler
+  lbfgs (>= 1.2.1),
+  foreach (>= 1.4.3),
+  doRNG (>= 1.6.6),
+  pracma (>= 2.0.7),
+  compiler (>= 3.4.3),
+  sfsmisc (>= 1.1.1)
 LinkingTo: Rcpp, RcppEigen
 RoxygenNote: 6.0.1

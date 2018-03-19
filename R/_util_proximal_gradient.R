@@ -1,49 +1,3 @@
-###some prox operators
-prox_affine <- function(inp, T_reparam, alpha_reparam) {
-  inp - crossprod(T_reparam, solve(tcrossprod(T_reparam), T_reparam %*% inp - alpha_reparam))
-}
-prox_inequality <- function(inp, test_idx, test_val, dir = c('gt', 'lt')) {
-  if (!all(test_idx <= length(inp) & test_idx >= 1)) {
-    stop('test_idx must be contained in the observations')
-  }
-  dir <- dir[1]
-  if (length(test_val) != length(test_idx)) {
-    test_val <- rep(test_val[1], length(test_idx))
-  }
-  cond_check <- inp[test_idx] >= test_val[order(test_idx)]
-  if (dir == 'lt') {
-    cond_check <- !cond_check
-  }
-  new_vals <- test_val
-  new_vals[cond_check] <- inp[test_idx[cond_check]]
-  ret <- inp
-  ret[test_idx] <- new_vals
-  return(ret)
-}
-prox_interval <- function(inp, test_idx, left_val, right_val) {
-  if (!(test_idx %in% 1:length(inp))) {
-    stop('test_idx must be contained in the observations')
-  }
-  if (!all(left_val <= right_val)) {
-    stop('left_val must be <= right_val')
-  }
-  if (length(left_val) != length(right_val)) {
-    stop('left_val must have same length as right_val')
-  }
-  if (length(left_val) != length(test_idx)) {
-    left_val <- rep(left_val[1], length(test_idx))
-    right_val <- rep(right_val[1], length(test_idx))
-  }
-  order_idx <- order(test_idx)
-  left_check <- inp[test_idx] < left_val[order_idx]
-  right_check <- inp[test_idx] > right_val[order_idx]
-  ret <- inp
-  ret[test_idx[left_check]] <- left_val[left_check]
-  ret[test_idx[right_check]] <- right_val[right_check]
-  return(ret)
-}
-###
-
 surrogate_prox <- function(feval, par_new, par_old, grad_val_old, step_size, ...) {
   as.numeric(feval(par_old, ...) + as.numeric(grad_val_old) %*% as.numeric(par_new - par_old) + 1 / (2 * step_size) * sum((par_new - par_old)^2))
 }
@@ -63,7 +17,7 @@ prox_line_search <- function(feval, par_new, par_old, grad_val_old, step_size, p
 
 proximal_gradient <- function(feval, geval, par, ..., prox_fun, prox_fun_arg = list(), 
                               tol_type = c('par', 'fval'), step_size = 1, accelerate = T, line_search = T, 
-                              ls_beta = .75, ls_eps = 1e-10, ls_max_iter = 50, maxit = 1000, prox_eps = 1e-6, verbose = F) {
+                              ls_beta = .75, ls_eps = 1e-10, ls_max_iter = 50, maxit = 1000, prox_eps = 1e-6) {
   ##checking inputs
   tol_type <- tol_type[1]
   ##initializing

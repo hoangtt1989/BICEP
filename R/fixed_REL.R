@@ -1,5 +1,18 @@
-
-##################function for REL admm outlier one dim mean CI
+#' Profile a confidence interval for a one-dimensional mean using either REL or EL
+#' 
+#' @param data_mat a matrix of the data with observations in rows and variables in columns.
+#' @param q an integer specifying the number of detected outliers. Default is \code{floor(.1 * n)}.
+#' @param conf_level the confidence level.
+#' @param test_thresh a string specifying the calibration type. Only the chi-squared approximation is currently implemented.
+#' @param upper_break the initial guess for the upper limit for root finding. Default uses a value based on the magnitude of the MLE.
+#' @param lower_break the initial guess for the lower limit for root finding.
+#' @param upper_divide divide the MLE by this much for \code{upper_break}.
+#' @param upper_increase increase the initial guess for the upper limit by this amount.
+#' @param left_algorithm the algorithm for the left confidence limit.
+#' @param right_algorithm the algorithm for the right confidence limit.
+#' @param ... additional arguments passed to \code{REL_fixed}.
+#' @param verbose a boolean to allow console output.
+#' @return A list with confidence interval attributes.
 #' @export
 REL_mean_CI <- function(data_mat, q = NULL, conf_level = .05, test_thresh = 'chisq', 
                         upper_break = NULL, lower_break = 1e-6, 
@@ -8,7 +21,7 @@ REL_mean_CI <- function(data_mat, q = NULL, conf_level = .05, test_thresh = 'chi
   right_algorithm <- right_algorithm[1]
   ##get critical value
   if (test_thresh == 'chisq') {
-    test_thresh <- qchisq(1 - conf_level, df = 1)
+    test_thresh <- stats::qchisq(1 - conf_level, df = 1)
   }
   ##
   ##get mean value
@@ -20,7 +33,7 @@ REL_mean_CI <- function(data_mat, q = NULL, conf_level = .05, test_thresh = 'chi
     Z_mat <- data_mat - test_val
     ret <- switch(left_algorithm,
                   REL = REL_fixed(Z_mat, q = q, ...),
-                  EL = emplik(Z_mat))
+                  EL = emplik_concord(Z_mat))
     ret$logelr_stat - test_thresh
   }
   right_root_fun <- function(inp) {
@@ -28,7 +41,7 @@ REL_mean_CI <- function(data_mat, q = NULL, conf_level = .05, test_thresh = 'chi
     Z_mat <- data_mat - test_val
     ret <- switch(right_algorithm,
                   REL = REL_fixed(Z_mat, q = q, ...),
-                  EL = emplik(Z_mat))
+                  EL = emplik_concord(Z_mat))
     ret$logelr_stat - test_thresh
   }
   ##
@@ -57,7 +70,7 @@ REL_mean_CI <- function(data_mat, q = NULL, conf_level = .05, test_thresh = 'chi
   ###use root finding to get the interval
   ##upper
   start_time <- Sys.time()
-  upper_int <- uniroot(right_root_fun, lower = lower_break, upper = upper_break, check.conv = F)
+  upper_int <- stats::uniroot(right_root_fun, lower = lower_break, upper = upper_break, check.conv = F)
   end_time <- Sys.time()
   upper_time <- end_time - start_time
   ##
@@ -72,7 +85,7 @@ REL_mean_CI <- function(data_mat, q = NULL, conf_level = .05, test_thresh = 'chi
   }
   ###
   start_time <- Sys.time()
-  lower_int <- uniroot(left_root_fun, lower = upper_break, upper = -lower_break, check.conv = F)
+  lower_int <- stats::uniroot(left_root_fun, lower = upper_break, upper = -lower_break, check.conv = F)
   end_time <- Sys.time()
   lower_time <- end_time - start_time
   ##
@@ -82,16 +95,34 @@ REL_mean_CI <- function(data_mat, q = NULL, conf_level = .05, test_thresh = 'chi
 ##################
 
 
-##################function for REL admm outlier fixed point (Rcpp)
-####Z_mat is the matrix of score equations
+#' Compute REL for a fixed estimate.
+#' 
+#' @param Z_mat a matrix of the score equations with observations in rows and variables in columns.
+#' @param q an integer specifying the number of detected outliers. Default is \code{floor(.1 * n)}.
+#' @param outlier_loop_arg control arguments passed to the \code{delta} optimization; see \code{\link{optim_outlier_control}}.
+#' @param wts_init an initial guess for the weights vector. Default is \code{1/n}.
+#' @param vary_penalty a string specifying the type of penalty variation.
+#' @param reuse_delta use the last estimate of \code{delta} in the current outer loop iteration.
+#' @param RB_mu the \code{mu} parameter for the residual balancing scheme.
+#' @param RB_tau the \code{tau} parameter for the residual balancing scheme.
+#' @param RB2_ksi the \code{ksi} parameter for the \code{RB2} scheme.
+#' @param outer_eps absolute tolerance required for outer loop convergence.
+#' @param outer_rel_eps relative tolerance required for outer loop convergence.
+#' @param dual_step initial penalty parameter.
+#' @param outer_maxit maximum number of outer loop iterations.
+#' @param wts_beta_rep the number of repetitions of the block coordinate descent update within each outer loop iteration.
+#' @param outer_tol_type the type of tolerance check for the outer loop.
+#' @param mirror_arg control arguments passed to the mirror descent optimization; see \code{\link{optim_mirror_control}}.
+#' @param verbose a boolean to allow console output.
+#' @return A list with estimates and convergence information.
 #' @export
 REL_fixed <- function(Z_mat, q = NULL,
                            outlier_loop_arg = list(), wts_init = NULL, 
                            vary_penalty = c('RB', 'RB2', 'none'), reuse_delta = F,
                            RB_mu = 10, RB_tau = 2, RB2_ksi = 2, outer_eps = 1e-8, outer_rel_eps = 1e-4, dual_step = 2, 
-                           outer_maxit = 1000, dual_type = 1, wts_beta_rep = 1, random_order = F,
+                           outer_maxit = 1000, wts_beta_rep = 1,
                            outer_tol_type = c('primal_dual', 'fval', 'gamma', 'primal'), 
-                           mirror_arg = list(line_search = T), verbose = F) {
+                           mirror_arg = optim_mirror_control(line_search = T), verbose = F) {
   ##checking inputs
   outer_tol_type <- outer_tol_type[1]
   vary_penalty <- vary_penalty[1]
@@ -141,7 +172,6 @@ REL_fixed <- function(Z_mat, q = NULL,
   mirror_nits <- rep(NA, outer_maxit)
   beta_outlier_nits <- rep(NA, outer_maxit)
   beta_outlier_tol <- rep(NA, outer_maxit)
-  update_order <- rep(NA, outer_maxit)
   rho_vec <- rep(NA, outer_maxit)
   ##
   ###initialize function/gradient arguments
@@ -159,54 +189,28 @@ REL_fixed <- function(Z_mat, q = NULL,
       }
     }
     ##random ordering of wts/beta update
-    if (!random_order || runif(1) < .5) {
-      wts_beta_order <- T ##update wts then beta
-      dual_resid_elt <- sqrt(n) ##dual residual has n elements
-      update_order[j] <- 'wts_beta'
-    } else {
-      wts_beta_order <- F ##update beta then wts
-      dual_resid_elt <- sqrt(p) ##dual residual has p elements
-      update_order[j] <- 'beta_wts'
-    }
+    dual_resid_elt <- sqrt(n) ##dual residual has n elements
     if (outer_tol_type == 'primal_dual') {
       dual_eps <- outer_eps * dual_resid_elt
     }
     ##
     ##wts and beta updates can be repeated
     for (wts_beta_iter in 1:wts_beta_rep) {
-      if (wts_beta_order) {
-        #######mirror descent
-        A_max <- n * dual_step * max(abs(tcrossprod(Z_mat))) ##t(Xtr_R) %*% Xtr_R
-        mirror_step <- 1 / ((A_max + max(abs(Z_mat %*% gamma_curr))) * max(abs(1 - delta_new)))
-        mirror_res <- do.call('mirror_descent_REL', c(list(wts = wts_new, delta = delta_new, mirror_step = mirror_step), fun_grad_arg, mirror_arg), quote = T)
-        wts_new <- as.vector(mirror_res$wts)
-        #######
-        #######outlier update
-        if (reuse_delta) {
-          delta_inp <- delta_new
-        } else {
-          delta_inp <- delta_init
-        }
-        outlier_res <- do.call('prox_grad_REL', c(list(wts_new, Z_mat, gamma_curr, dual_step, delta_inp, q), outlier_loop_arg), quote = T)
-        delta_new <- outlier_res$delta_opt
-        #######
+      #######mirror descent
+      A_max <- n * dual_step * max(abs(tcrossprod(Z_mat))) ##t(Xtr_R) %*% Xtr_R
+      mirror_step <- 1 / ((A_max + max(abs(Z_mat %*% gamma_curr))) * max(abs(1 - delta_new)))
+      mirror_res <- do.call('mirror_descent_REL', c(list(wts = wts_new, delta = delta_new, mirror_step = mirror_step), fun_grad_arg, mirror_arg), quote = T)
+      wts_new <- as.vector(mirror_res$wts)
+      #######
+      #######outlier update
+      if (reuse_delta) {
+        delta_inp <- delta_new
       } else {
-        #######outlier update
-        if (reuse_delta) {
-          delta_inp <- delta_new
-        } else {
-          delta_inp <- delta_init
-        }
-        outlier_res <- do.call('prox_grad_REL', c(list(wts_new, Z_mat, gamma_curr, dual_step, delta_inp, q), outlier_loop_arg), quote = T)
-        delta_new <- outlier_res$delta_opt
-        #######
-        #######mirror descent
-        A_max <- n * dual_step * max(abs(tcrossprod(Z_mat) %*% (1 - delta_new))) ##t(Xtr_R) %*% Xtr_R
-        mirror_step <- 1 / (A_max + max(abs(Z_mat %*% gamma_curr)))
-        mirror_res <- do.call('mirror_descent_REL', c(list(wts = wts_new, delta = delta_new, mirror_step = mirror_step), fun_grad_arg, mirror_arg), quote = T)
-        wts_new <- as.vector(mirror_res$wts)
-        #######
+        delta_inp <- delta_init
       }
+      outlier_res <- do.call('prox_grad_REL', c(list(wts_new, Z_mat, gamma_curr, dual_step, delta_inp, q), outlier_loop_arg), quote = T)
+      delta_new <- outlier_res$delta_opt
+      #######
     }
     ##
     mirror_nits[j] <- mirror_res$iter
@@ -216,14 +220,11 @@ REL_fixed <- function(Z_mat, q = NULL,
       if (!mirror_res$converged) {
         warning(paste('Mirror descent did not converge at iteration', j))
       }
+      if (!outlier_res$converged) {
+        warning(paste('REL update did not converge at iteration', j))
+      }
     }
-    ##update R_diff and wts_diff for dual residual
-    if (wts_beta_order) { ##wts were updated first
-      delta_diff <- (delta_curr - delta_new)
-    } else { ##delta was updated first
-      wts_diff <- as.vector(wts_new - wts_curr)
-    }
-    ##
+    delta_diff <- (delta_curr - delta_new)
     #######gamma update
     gamma_new <- gamma_curr + dual_step * crossprod(Z_mat, wts_new * (1 - delta_new))
     
@@ -235,14 +236,10 @@ REL_fixed <- function(Z_mat, q = NULL,
     #######
     #######dual residual
     if (primal_dual_flag) {
-      if (wts_beta_order) { ##wts were updated first
-        dual_resid <- sqrt( sum( (dual_step * (tcrossprod(Z_mat) %*% (wts_new * (delta_diff))) * (delta_curr - 1))^2 ) )
-        dual_resid <- ifelse(dual_resid < tiny, tiny_med, dual_resid)
-        dual_resid_scale <- sqrt( sum( ((Z_mat %*% gamma_new) * (1 - delta_curr))^2 ) ) 
-        dual_resid_scale <- ifelse(dual_resid_scale < tiny, tiny_med, dual_resid)
-      } else { ##delta was updated first
-        dual_resid <- sqrt(sum((dual_step * crossprod(X, wts_curr * tcrossprod(X)) %*% (wts_diff * y - wts_diff * link_fun(X %*% beta_new)))^2))
-      }
+      dual_resid <- sqrt( sum( (dual_step * (tcrossprod(Z_mat) %*% (wts_new * (delta_diff))) * (delta_curr - 1))^2 ) )
+      dual_resid <- ifelse(dual_resid < tiny, tiny_med, dual_resid)
+      dual_resid_scale <- sqrt( sum( ((Z_mat %*% gamma_new) * (1 - delta_curr))^2 ) ) 
+      dual_resid_scale <- ifelse(dual_resid_scale < tiny, tiny_med, dual_resid)
     }
     #######
     #######primal residual
@@ -271,40 +268,12 @@ REL_fixed <- function(Z_mat, q = NULL,
     ###
     #######vary penalty parameter
     if (vary_penalty == 'RB') {
-      if (primal_resid > RB_mu * dual_resid) {
-        dual_step <- RB_tau * dual_step
-      } else if (dual_resid > RB_mu * primal_resid) {
-        dual_step <- dual_step / RB_tau
-      }
-      ##update fun_arg and grad_arg
-      fun_grad_arg$dual_step <- dual_step
-      ##
+      dual_step <- RB_vary(dual_step, primal_resid, dual_resid, RB_mu, RB_tau)
     }
     if (vary_penalty == 'RB2') {
-      ###varying tau
-      primal_dual_div <- primal_resid / dual_resid
-      dual_primal_div <- 1 / primal_dual_div
-      sqrt_primal_dual_div <- sqrt(primal_dual_div / RB2_ksi)
-      sqrt_dual_primal_div <- sqrt(dual_primal_div * RB2_ksi)
-      if (sqrt_primal_dual_div < RB_tau && sqrt_primal_dual_div >= 1) {
-        RB2_tau <- sqrt_primal_dual_div
-      } else if (sqrt_dual_primal_div < 1 && sqrt_dual_primal_div > (1 / RB_tau)) {
-        RB2_tau <- sqrt_primal_dual_div
-      } else {
-        RB2_tau <- RB_tau
-      }
-      ###
-      primal_resid_rel <- primal_resid / primal_resid_scale
-      dual_resid_rel <- dual_resid / dual_resid_scale
-      if (primal_resid_rel > RB2_ksi * RB_mu * dual_resid_rel) {
-        dual_step <- RB2_tau * dual_step
-      } else if (dual_resid_rel > RB_mu * primal_resid_rel / RB2_ksi) {
-        dual_step <- dual_step / RB2_tau
-      }
-      ##update fun_arg and grad_arg
-      fun_grad_arg$dual_step <- dual_step
-      ##
+      dual_step <- RB2_vary(dual_step, primal_resid, primal_resid_scale, dual_resid, dual_resid_scale, RB2_ksi, RB_tau)
     }
+    fun_grad_arg$dual_step <- dual_step
     rho_vec[j] <- dual_step
     #######
     #######stopping
@@ -343,7 +312,6 @@ REL_fixed <- function(Z_mat, q = NULL,
   mirror_nits <- mirror_nits[1:j]
   beta_outlier_nits <- beta_outlier_nits[1:j]
   beta_outlier_tol <- beta_outlier_tol[1:j]
-  update_order <- update_order[1:j]
   logelr <- outer_fval_curr
   if (!primal_dual_flag) {
     primal_resid <- 'not calculated'
@@ -355,7 +323,7 @@ REL_fixed <- function(Z_mat, q = NULL,
               gamma = gamma_curr, delta_opt = delta_new, outlier_idx = which(delta_new != 0), 
               outer_converged = outer_converged, time = as.double(tot_time, 'secs'), 
               outer_fval = -outer_fval, primal_resid = primal_resid, dual_resid = dual_resid, rho = rho_vec,
-              outer_tol = outer_tol, update_order = update_order, beta_outlier_nits = beta_outlier_nits, beta_outlier_tol = beta_outlier_tol,
+              outer_tol = outer_tol, beta_outlier_nits = beta_outlier_nits, beta_outlier_tol = beta_outlier_tol,
               mirror_nits = mirror_nits, outer_nits = j))
 }
 ##################

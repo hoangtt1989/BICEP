@@ -4,7 +4,6 @@ primal_resid_calc <- function(Z_mat_new, wts_new) {
 }
 
 canonical_primal_resid_sc <- function(X, y, wts_new, beta_new, link_fun) {
-  # n <- length(wts_new)
   wts_X <- wts_new * X
   max(sqrt(sum((crossprod(wts_X, y))^2)), sqrt(sum((crossprod(wts_X, link_fun(X %*% beta_new)))^2)), 1)
 }

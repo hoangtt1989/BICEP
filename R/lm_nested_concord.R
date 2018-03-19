@@ -1,8 +1,24 @@
 ##################function for CEL linear regression nested
+#' Run the nested algorithm for linear regression composite tests.
+#' 
+#' @param beta_test a vector of candidate test values.
+#' @param X a design matrix with observations in rows and variables in columns.
+#' @param y a vector of the responses.
+#' @param F_reparam the \code{F} matrix for the affine reparameterization.
+#' @param s_hat_reparam the \code{s} vector for the affine reparameterization.
+#' @param gamma_init a vector of initial values for the dual, or a \code{"random"} to specify sampling from \code{\link[stats]{rnorm}}. Default is zero vector.
+#' @param outer_eps absolute tolerance required for outer loop convergence.
+#' @param outer_maxit maximum number of outer loop iterations.
+#' @param inner_opt_type optimization type for the inner loop.
+#' @param inner_owen_arg control arguments passed to the dual formulation (\code{owen}) optimization for the inner loop; see \code{\link{optim_owen_inner_control}}.
+#' @param inner_lbfgs_arg a list of arguments passed to \code{\link[lbfgs]{lbfgs}}.
+#' @param beta_newton_arg control arguments passed to the damped Newton optimization for the inner loop; see \code{\link{optim_newton_control}}.
+#' @param outer_tol_type the type of tolerance checking for the outer loop.
+#' @param verbose a boolean to allow console output.
 #' @export
 CEL_lm_nested <- function(beta_test, X, y, F_reparam, s_hat_reparam, gamma_init = NULL,
                           outer_eps = 1e-8, outer_maxit = 1000, inner_opt_type = c('owen', 'LBFGS'), 
-                          inner_owen_arg = list(), inner_lbfgs_arg = list(invisible = 1), beta_newton_arg = list(),
+                          inner_owen_arg = optim_owen_inner_control(), inner_lbfgs_arg = list(invisible = 1), beta_newton_arg = optim_newton_control(),
                           outer_tol_type = c('fval', 'gval'), verbose = F) {
   ##checking inputs
   outer_tol_type <- outer_tol_type[1]
@@ -12,7 +28,7 @@ CEL_lm_nested <- function(beta_test, X, y, F_reparam, s_hat_reparam, gamma_init 
   }
   ##
   ##compile owen's functions
-  owen_EL <- compiler::cmpfun(emplik) ##inner loop
+  owen_EL <- compiler::cmpfun(emplik_concord) ##inner loop
   ##
   ##compile gradient/hessian functions
   lm_hess_z <- compiler::cmpfun(lm_hess_z)
@@ -28,7 +44,7 @@ CEL_lm_nested <- function(beta_test, X, y, F_reparam, s_hat_reparam, gamma_init 
   if (is.null(gamma_init)) {
     gamma_init2 <- rep(0, p)
   } else if (gamma_init == 'random'){
-    gamma_init2 <- rnorm(p)
+    gamma_init2 <- stats::rnorm(p)
   } else {
     if (length(gamma_init) != p) {
       stop('gamma_init must have p elements')
@@ -47,7 +63,7 @@ CEL_lm_nested <- function(beta_test, X, y, F_reparam, s_hat_reparam, gamma_init 
   ##first inner loop iteration
   score_curr <- R_curr * X
   if (inner_opt_type == 'owen') {
-    inner_res <- do.call('owen_EL', c(list(score_curr, lam = gamma_init2), inner_owen_arg), quote = T)
+    inner_res <- do.call('emplik_concord', c(list(score_curr, lam = gamma_init2), inner_owen_arg), quote = T)
     gamma_curr <- inner_res$lambda
     logelr_curr <- inner_res$logelr
     # logelr_curr <- sum(mllog(inner_res$wts, 1/n, der = 0))
@@ -89,11 +105,11 @@ CEL_lm_nested <- function(beta_test, X, y, F_reparam, s_hat_reparam, gamma_init 
     ####inner loop
     if (!is.null(gamma_init)) {
       if (gamma_init == 'random') {
-        gamma_init2 <- rnorm(p)
+        gamma_init2 <- stats::rnorm(p)
       }
     }
     if (inner_opt_type == 'owen') {
-      inner_res <- do.call('owen_EL', c(list(score_new, lam = gamma_init2), inner_owen_arg), quote = T)
+      inner_res <- do.call('emplik_concord', c(list(score_new, lam = gamma_init2), inner_owen_arg), quote = T)
       gamma_curr <- inner_res$lambda
       inner_nits[j] <- inner_res$nits
       outer_fval_new <- -inner_res$logelr

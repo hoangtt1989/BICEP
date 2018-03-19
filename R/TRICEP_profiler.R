@@ -1,8 +1,18 @@
-library(pracma)
-library(foreach)
-library(doRNG)
-
 ##################bootstrap for more general composite tests - using proximal operator
+#' Bootstrap TRICEP/BICEP for general composite tests using a proximal operator
+#' 
+#' @param X a design matrix with observations in rows and variables in columns.
+#' @param y a vector of the responses. Default is \code{NULL} in case \code{family = "mean"} (test a vector mean).
+#' @param prox_fun a proximal operator. This should be an \code{R} object.
+#' @param prox_fun_arg a list of arguments passed to \code{prox_fun}.
+#' @param family either the GLM family or \code{"mean"} for a vector mean.
+#' @param ... additional arguments passed to \code{\link{TRICEP_glm}}.
+#' @param beta_init an initial guess for the \code{beta} vector.
+#' @param B the number of boostrap replications.
+#' @param prob the coverage probability.
+#' @param parallel a boolean indicating whether each replicate should be parallelized. A backend for \code{\link[foreach]{foreach}} must be registered if this is \code{T}.
+#' @param seed an integer for setting the seed.
+#' @return A list with the bootstrapped test statistic, the p value, and the replicates.
 #' @export
 TRICEP_glm_boot <- function(X, y = NULL, prox_fun = prox_inequality, prox_fun_arg = list(test_idx = 1, test_val = 0), family = c('gaussian', 'binomial', 'poisson', 'mean'), ..., beta_init = NULL, B = 200, prob = .95, parallel = T, seed = 123) {
   ##checking inputs
@@ -46,11 +56,25 @@ TRICEP_glm_boot <- function(X, y = NULL, prox_fun = prox_inequality, prox_fun_ar
   keep_len <- length(keep_idx)
   boot_res <- boot_res[keep_idx]
   boot_pval <- length(which(boot_res >= init_res$logelr_stat)) / keep_len
-  return(list(boot_stat = quantile(boot_res, prob), boot_pval = boot_pval, boot_vec = as.numeric(boot_res), time = as.double(tot_time, 'secs')))
+  return(list(boot_stat = stats::quantile(boot_res, prob), boot_pval = boot_pval, boot_vec = as.numeric(boot_res), time = as.double(tot_time, 'secs')))
 }
 ##################
 
 ##################bootstrap for coefficient - starting at MLE
+#' Bootstrap TRICEP/BICEP for a coefficient, starting at the MLE.
+#' 
+#' @param fix_index a vector indicating the indices to be boostrapped.
+#' @param X a design matrix with observations in rows and variables in columns.
+#' @param y a vector of the responses. Default is \code{NULL} in case \code{family = "mean"} (test a vector mean).
+#' @param family either the GLM family or \code{"mean"} for a vector mean.
+#' @param B the number of boostrap replications.
+#' @param prob the coverage probability.
+#' @param mean_init the MLE for the coefficients.
+#' @param algorithm a string indicating the algorithm to be used. \code{"nested"} is only compatible when \code{family = "gaussian"}.
+#' @param parallel a boolean indicating whether each replicate should be parallelized. A backend for \code{\link[foreach]{foreach}} must be registered if this is \code{T}.
+#' @param seed an integer for setting the seed.
+#' @param ... additional arguments passed to \code{\link{TRICEP_glm}}.
+#' @return A list with the bootstrapped test statistic and the replicates.
 #' @export
 TRICEP_glm_beta_boot <- function(fix_index, X, y = NULL, family = c('gaussian', 'binomial', 'poisson'), B = 200, prob = .95, mean_init = NULL, algorithm = c('TRICEP', 'nested'), parallel = T, seed = 123, ...) {
   ##checking inputs
@@ -94,7 +118,7 @@ TRICEP_glm_beta_boot <- function(fix_index, X, y = NULL, family = c('gaussian', 
   keep_idx <- which(!is.infinite(boot_res))
   keep_len <- length(keep_idx)
   boot_res <- boot_res[keep_idx]
-  return(list(boot_stat = quantile(boot_res, prob), boot_vec = as.numeric(boot_res), time = as.double(tot_time, 'secs')))
+  return(list(boot_stat = stats::quantile(boot_res, prob), boot_vec = as.numeric(boot_res), time = as.double(tot_time, 'secs')))
 }
 
 glm_boot_beta_interm_fun <- function(fix_index, alpha_test, X, y, F_reparam, s_hat_reparam, algorithm = c('TRICEP', 'nested'), family, ...) {
@@ -126,6 +150,17 @@ glm_boot_beta_interm_fun <- function(fix_index, alpha_test, X, y, F_reparam, s_h
 ##################
 
 ##################compute EL for a fixed value of a component of the beta vector for glm
+#' Compute CEL for a given value of a coefficient.
+#' 
+#' @param beta_fix_val the test values.
+#' @param fix_index a vector indicating the indices to be tested.
+#' @param X a design matrix with observations in rows and variables in columns.
+#' @param y a vector of the responses. Default is \code{NULL} in case \code{family = "mean"} (test a vector mean).
+#' @param family either the GLM family or \code{"mean"} for a vector mean.
+#' @param mean_init the MLE for the coefficients.
+#' @param algorithm a string indicating the algorithm to be used. \code{"nested"} is only compatible when \code{family = "gaussian"}.
+#' @param ... additional arguments passed to \code{\link{TRICEP_glm}}.
+#' @return A list with the output from \code{\link{TRICEP_glm}}.
 #' @export
 TRICEP_glm_beta_fixed <- function(beta_fix_val, fix_index, X, y = NULL, family = c('gaussian', 'binomial', 'poisson', 'mean'), mean_init = NULL, algorithm = c('TRICEP', 'nested'), ...) {
   ##checking inputs
@@ -151,6 +186,17 @@ TRICEP_glm_beta_fixed <- function(beta_fix_val, fix_index, X, y = NULL, family =
 ##################
 
 ##################compute EL for a fixed value of a component of the beta vector (alpha_add specifies how far away from MLE) for glm
+#' Compute CEL by perturbing the MLE at a coefficient.
+#' 
+#' @param alpha_add a vector with the perturbations.
+#' @param fix_index a vector indicating the indices to be tested.
+#' @param X a design matrix with observations in rows and variables in columns.
+#' @param y a vector of the responses. Default is \code{NULL} in case \code{family = "mean"} (test a vector mean).
+#' @param family either the GLM family or \code{"mean"} for a vector mean.
+#' @param mean_init the MLE for the coefficients.
+#' @param algorithm a string indicating the algorithm to be used. \code{"nested"} is only compatible when \code{family = "gaussian"}.
+#' @param ... additional arguments passed to \code{\link{TRICEP_glm}}.
+#' @return A list with the output from \code{\link{TRICEP_glm}}.
 #' @export
 TRICEP_glm_beta_add <- function(alpha_add, fix_index, X, y = NULL, family = c('gaussian', 'binomial', 'poisson', 'mean'), mean_init = NULL, algorithm = c('TRICEP', 'nested'), ...) {
   ##checking inputs
@@ -185,6 +231,21 @@ TRICEP_glm_beta_add <- function(alpha_add, fix_index, X, y = NULL, family = c('g
 ##################
 
 ##################find the EL confidence interval for a component of the beta vector for glm using TRICEP
+#' Profile a CEL confidence interval for one component of the coefficient vector.
+#' @param fix_index a vector indicating the indices to be tested.
+#' @param X a design matrix with observations in rows and variables in columns.
+#' @param y a vector of the responses. Default is \code{NULL} in case \code{family = "mean"} (test a vector mean).
+#' @param family either the GLM family or \code{"mean"} for a vector mean.
+#' @param conf_level the confidence level.
+#' @param test_thresh either a string specifying the chi-square approximation or a double (such as a statistic calculated from the bootstrap).
+#' @param upper_break the initial guess for the upper limit for root finding. Default uses a value based on the magnitude of the MLE.
+#' @param lower_break the initial guess for the lower limit for root finding.
+#' @param upper_divide divide the MLE by this much for \code{upper_break}.
+#' @param upper_increase increase the initial guess for the upper limit by this amount.
+#' @param algorithm a string indicating the algorithm to be used. \code{"nested"} is only compatible when \code{family = "gaussian"}.
+#' @param ... additional arguments passed to \code{\link{TRICEP_glm}}.
+#' @param verbose a boolean to allow console output.
+#' @return A list with confidence interval attributes.
 #' @export
 TRICEP_glm_beta_profiler <- function(fix_index, X, y = NULL, family = c('gaussian', 'binomial', 'poisson', 'mean'), 
                                   conf_level = .05, test_thresh = 'chisq', upper_break = NULL, lower_break = 1e-6, 
@@ -198,7 +259,7 @@ TRICEP_glm_beta_profiler <- function(fix_index, X, y = NULL, family = c('gaussia
   ##
   ##get critical value
   if (test_thresh == 'chisq') {
-    test_thresh <- qchisq(1 - conf_level, df = 1)
+    test_thresh <- stats::qchisq(1 - conf_level, df = 1)
   }
   ##
   ##get mean value
@@ -240,7 +301,7 @@ TRICEP_glm_beta_profiler <- function(fix_index, X, y = NULL, family = c('gaussia
   ###use root finding to get the interval
   ##upper
   start_time <- Sys.time()
-  upper_int <- uniroot(root_fun, lower = lower_break, upper = upper_break, check.conv = F)
+  upper_int <- stats::uniroot(root_fun, lower = lower_break, upper = upper_break, check.conv = F)
   end_time <- Sys.time()
   upper_time <- end_time - start_time
   ##
@@ -255,7 +316,7 @@ TRICEP_glm_beta_profiler <- function(fix_index, X, y = NULL, family = c('gaussia
   }
   ###
   start_time <- Sys.time()
-  lower_int <- uniroot(root_fun, lower = upper_break, upper = -lower_break, check.conv = F)
+  lower_int <- stats::uniroot(root_fun, lower = upper_break, upper = -lower_break, check.conv = F)
   end_time <- Sys.time()
   lower_time <- end_time - start_time
   ##

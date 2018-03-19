@@ -39,8 +39,8 @@
 
 # Art B. Owen, Feb 2014
 
-emplik = function(  z,  # matrix with one data vector per row, a column vector is ok when d=1
-                    #mu,  # hypothesized mean, default (0 ... 0) in R^d
+#' @keywords internal
+emplik_concord = function(  z,  # matrix with one data vector per row, a column vector is ok when d=1
                     lam,  # starting lambda, default (0 ... 0)
                     eps = 1 / nrow(z),  # lower cutoff for -log( ), default 1/nrow(z)
                     M = Inf,  # upper cutoff for -log( ), default Inf
