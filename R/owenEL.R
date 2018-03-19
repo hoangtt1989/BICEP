@@ -39,7 +39,16 @@
 
 # Art B. Owen, Feb 2014
 
-#' @keywords internal
+#' Use the dual formulation to solve the inner loop.
+#' 
+#' @param z a matrix of the score equations with observations in rows and variables in columns.
+#' @param lam a vector of initial values for the dual parameter.
+#' @param eps lower cutoff for logarithm approximation.
+#' @param M upper cutoff for logarithm approximation.
+#' @param thresh convergence threshold.
+#' @param itermax maximum number of iterations.
+#' @param verbose print console output.
+#' @export
 emplik_concord = function(  z,  # matrix with one data vector per row, a column vector is ok when d=1
                     lam,  # starting lambda, default (0 ... 0)
                     eps = 1 / nrow(z),  # lower cutoff for -log( ), default 1/nrow(z)
