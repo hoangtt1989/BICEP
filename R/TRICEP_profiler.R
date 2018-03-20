@@ -80,6 +80,9 @@ TRICEP_glm_beta_boot <- function(fix_index, X, y = NULL, family = c('gaussian', 
   ##checking inputs
   family <- family[1]
   algorithm <- algorithm[1]
+  if (!(algorithm %in% c('TRICEP', 'nested'))) {
+    stop('algorithm must be TRICEP or nested')
+  }
   if (algorithm != 'TRICEP' && family != 'gaussian') {
     stop('nested is currently only implemented for gaussian family')
   }
@@ -166,6 +169,9 @@ TRICEP_glm_beta_fixed <- function(beta_fix_val, fix_index, X, y = NULL, family =
   ##checking inputs
   family <- family[1]
   algorithm <- algorithm[1]
+  if (!(algorithm %in% c('TRICEP', 'nested'))) {
+    stop('algorithm must be TRICEP or nested')
+  }
   if (algorithm != 'TRICEP' && family != 'gaussian') {
     stop('nested is currently only implemented for gaussian family')
   }
@@ -202,6 +208,9 @@ TRICEP_glm_beta_add <- function(alpha_add, fix_index, X, y = NULL, family = c('g
   ##checking inputs
   family <- family[1]
   algorithm <- algorithm[1]
+  if (!(algorithm %in% c('TRICEP', 'nested'))) {
+    stop('algorithm must be TRICEP or nested')
+  }
   if (algorithm != 'TRICEP' && family != 'gaussian') {
     stop('nested is currently only implemented for gaussian family')
   }
@@ -253,6 +262,9 @@ TRICEP_glm_beta_profiler <- function(fix_index, X, y = NULL, family = c('gaussia
   ##checking inputs
   family <- family[1]
   algorithm <- algorithm[1]
+  if (!(algorithm %in% c('TRICEP', 'nested'))) {
+    stop('algorithm must be TRICEP or nested')
+  }
   if (algorithm != 'TRICEP' && family != 'gaussian') {
     stop('nested is currently only implemented for gaussian family')
   }

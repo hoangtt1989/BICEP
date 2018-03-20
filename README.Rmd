@@ -30,11 +30,18 @@ noise <- rnorm(n)
 y <- X %*% beta_true + noise
 ```
 
-What is the log empirical likelihood ratio for testing that the first two coefficients equal their true value?
+What is the log empirical likelihood ratio for testing that the first two coefficients equal their true value using the bi-linear algorithm (BICEP)?
 
 ```{r}
 test1 <- TRICEP_glm_beta_fixed(beta_true[c(1, 2)], c(1, 2), X, y)
 test1$logelr
+```
+
+What about the nested algorithm?
+
+```{r}
+test2 <- TRICEP_glm_beta_fixed(beta_true[c(1, 2)], c(1, 2), X, y, algorithm = 'nested')
+test2$logelr
 ```
 
 Compute a confidence interval for the first coefficient

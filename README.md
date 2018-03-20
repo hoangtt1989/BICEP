@@ -26,7 +26,7 @@ noise <- rnorm(n)
 y <- X %*% beta_true + noise
 ```
 
-What is the log empirical likelihood ratio for testing that the first two coefficients equal their true value?
+What is the log empirical likelihood ratio for testing that the first two coefficients equal their true value using the bi-linear algorithm (BICEP)?
 
 ``` r
 test1 <- TRICEP_glm_beta_fixed(beta_true[c(1, 2)], c(1, 2), X, y)
@@ -34,6 +34,15 @@ test1$logelr
 ```
 
     ## [1] -0.7683117
+
+What about the nested algorithm?
+
+``` r
+test2 <- TRICEP_glm_beta_fixed(beta_true[c(1, 2)], c(1, 2), X, y, algorithm = 'nested')
+test2$logelr
+```
+
+    ## [1] -0.7682966
 
 Compute a confidence interval for the first coefficient
 
@@ -52,7 +61,7 @@ confint1
     ## [1] 4.983587
     ## 
     ## $time
-    ## [1] 0.6114001
+    ## [1] 0.6362181
 
 One-dimensional mean with outliers example
 ------------------------------------------
@@ -175,4 +184,4 @@ dirty_wts_plot <- ggplot(dirty_test_df, aes(x = Index, y = Weights, color = Type
 ggarrange(dirty_scatter, dirty_wts_plot, nrow = 2, labels = c('A', 'B'))
 ```
 
-![](README_files/figure-markdown_github/unnamed-chunk-9-1.png)
+![](README_files/figure-markdown_github/unnamed-chunk-10-1.png)

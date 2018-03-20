@@ -13,7 +13,6 @@ glm_beta_opt <- function(beta_new, wts_new, gamma_curr, y, X, F_reparam, s_hat_r
     beta_new <- as.vector(F_reparam %*% z_hat_new + s_hat_reparam)
   } else if (beta_opt_type == 'proximal_gradient') { ## proximal gradient descent for other cases
     prox_res <- do.call('proximal_gradient', c(list(fun_glm_AL, grad_glm_AL, beta_new, X = X, y = y, wts = wts_new, gamma = gamma_curr, dual_step = dual_step, family = family, prox_fun = prox_fun, prox_fun_arg = prox_fun_arg), prox_optim_arg), quote = T)
-    # prox_res <- do.call('proximal_gradient', c(list(beta_new, X, y, wts_new, gamma_curr, dual_step, family, prox_fun), prox_fun_arg, prox_optim_arg))
     beta_new <- prox_res$par
     converged <- prox_res$converged
   } else {
