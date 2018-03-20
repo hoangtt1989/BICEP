@@ -67,7 +67,7 @@ set.seed(123)
 true_means <- 1.3
 ```
 
-Generate univrate data with mean equal to `r true_means`.
+Generate univariate data with mean equal to `r true_means`.
 ```{r}
 #####generate data with a certain mean
 data_mat <- do.call(cbind, lapply(true_means, function(x) {rnorm(n, mean = x)}))
@@ -84,7 +84,7 @@ Z_clean_test <- data_mat - mean_test_mat
 #####
 ```
 
-Take the first five observations and make them outliers, then perform empirical likelihood and robust empirical likelihood.
+Take the first five observations and make them outliers.
 ```{r}
 #####pick points and move them far away from the point cloud
 dirty_mat <- data_mat
@@ -108,24 +108,24 @@ mean_dirty_test_mat[, test_idx] <- mean_dirty_test_mat[, test_idx] + alpha_add
 Z_dirty_test <- dirty_mat - mean_dirty_test_mat
 ##
 #####
+```
 
-
-#####dirty test
+Perform empirical likelihood and robust empirical likelihood.
+```{r}
 owen_dirty_test <- emplik_concord(Z_dirty_test)
 REL_dirty_test <- REL_fixed(Z_dirty_test, q = nout, wts_beta_rep = 2, RB_tau = 1.5, dual_step = 20)
 dirty_test_df <- data_frame(EL = as.vector(owen_dirty_test$wts), REL = REL_dirty_test$wts, Index = 1:n) %>% 
   gather(Type, Weights, -Index)
+```
+
+In the top scatter plot, the MLE is the black dashed line and the red dashed line is the candidate value for the mean. The five artificially induced outliers are enclosed in a rectangle to the right.
+
+```{r}
 dirty_wts_plot <- ggplot(dirty_test_df, aes(x = Index, y = Weights, color = Type)) +
   geom_point() +
   geom_rect(aes(xmin = -1, xmax = max(dirty_idx) + .8, ymin = min(owen_dirty_test$wts[REL_dirty_test$outlier_idx]) - 1e-4, 
                 ymax = max(REL_dirty_test$wts[REL_dirty_test$outlier_idx]) + 1e-4), color = 'gray', fill = NA, alpha = .1) +
   geom_hline(yintercept = 1/n, linetype = 2, alpha = .5) +
   theme_bw()
-#####
-```
-
-In the top scatter plot, the MLE is the black dashed line and the red dashed line is the candidate value for the mean. The five artificially induced outliers are enclosed in a rectangle to the right.
-
-```{r}
 ggarrange(dirty_scatter, dirty_wts_plot, nrow = 2, labels = c('A', 'B'))
 ```
