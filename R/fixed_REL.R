@@ -117,7 +117,7 @@ REL_mean_CI <- function(data_mat, q = NULL, conf_level = .05, test_thresh = 'chi
 #' @return A list with estimates and convergence information.
 #' @export
 REL_fixed <- function(Z_mat, q = NULL,
-                           outlier_loop_arg = list(), wts_init = NULL, 
+                           outlier_loop_arg = optim_outlier_control(), wts_init = NULL, 
                            vary_penalty = c('RB', 'RB2', 'none'), reuse_delta = F,
                            RB_mu = 10, RB_tau = 2, RB2_ksi = 2, outer_eps = 1e-8, outer_rel_eps = 1e-4, dual_step = 2, 
                            outer_maxit = 1000, wts_beta_rep = 1,
