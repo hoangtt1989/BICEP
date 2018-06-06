@@ -4,12 +4,13 @@
 \alias{REL_fixed}
 \title{Compute REL for a fixed estimate.}
 \usage{
-REL_fixed(Z_mat, q = NULL, outlier_loop_arg = list(), wts_init = NULL,
-  vary_penalty = c("RB", "RB2", "none"), reuse_delta = F, RB_mu = 10,
-  RB_tau = 2, RB2_ksi = 2, outer_eps = 1e-08, outer_rel_eps = 1e-04,
-  dual_step = 2, outer_maxit = 1000, wts_beta_rep = 1,
-  outer_tol_type = c("primal_dual", "fval", "gamma", "primal"),
-  mirror_arg = optim_mirror_control(line_search = T), verbose = F)
+REL_fixed(Z_mat, q = NULL, outlier_loop_arg = optim_outlier_control(),
+  wts_init = NULL, vary_penalty = c("RB", "RB2", "none"), reuse_delta = F,
+  RB_mu = 10, RB_tau = 2, RB2_ksi = 2, outer_eps = 1e-08,
+  outer_rel_eps = 1e-04, dual_step = 2, outer_maxit = 1000,
+  wts_beta_rep = 1, outer_tol_type = c("primal_dual", "fval", "gamma",
+  "primal"), mirror_arg = optim_mirror_control(line_search = T),
+  verbose = F)
 }
 \arguments{
 \item{Z_mat}{a matrix of the score equations with observations in rows and variables in columns.}

@@ -139,13 +139,18 @@ REL_fixed <- function(Z_mat, q = NULL,
   tiny <- .Machine$double.eps
   tiny2 <- tiny^(.25)
   tiny_med <- tiny^(.5)
-  prob_size <- dim(Z_mat)
-  n <- prob_size[1]
+  if (is.vector(Z_mat)) {
+    n <- length(Z_mat)
+    p <- 1
+  } else {
+    prob_size <- dim(Z_mat)
+    n <- prob_size[1]
+    p <- prob_size[2]
+  }
   if (is.null(q)) {
     q <- floor(.1 * n)
   }
   q <- max(0, min(n, floor(q)))
-  p <- prob_size[2]
   if (is.null(wts_init)) {
     wts_init <- rep(1, n)
   } else {
