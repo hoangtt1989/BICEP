@@ -142,6 +142,7 @@ REL_fixed <- function(Z_mat, q = NULL,
   if (is.vector(Z_mat)) {
     n <- length(Z_mat)
     p <- 1
+    Z_mat <- as.matrix(Z_mat)
   } else {
     prob_size <- dim(Z_mat)
     n <- prob_size[1]
